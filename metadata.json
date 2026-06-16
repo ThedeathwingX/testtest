@@ -1,0 +1,6 @@
+{
+  "name": "Osaka Real Estate CRM",
+  "description": "A high-density relations management platform for Osaka real estate investments, showcasing client management, Kanban tracking, compliance checks, and messaging tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
