@@ -14,7 +14,8 @@ import {
   Settings, 
   LogOut, 
   Plus,
-  Compass
+  Compass,
+  Database
 } from 'lucide-react';
 import { ActiveView } from '../types';
 
@@ -35,7 +36,7 @@ export default function Sidebar({
   const mainNavItems = [
     { id: 'dashboard', label: '今日工作台', icon: LayoutDashboard },
     { id: 'clients', label: '客戶資料庫', icon: Users },
-    { id: 'kanban', label: '跟進 Kanban', icon: KanbanSquare },
+    { id: 'kanban', label: '工作跟進', icon: KanbanSquare },
     { id: 'properties', label: '有推介過的客戶', icon: Building2 },
     { id: 'viewings', label: '睇樓安排', icon: Calendar },
     { id: 'pavel_checklist', label: '重要事項告知書', icon: Gavel },
@@ -43,6 +44,7 @@ export default function Sidebar({
     { id: 'whatsapp_templates', label: 'WhatsApp 模板', icon: MessageSquare },
     { id: 'whatsapp_sync', label: 'WhatsApp 同步設定', icon: RefreshCw },
     { id: 'reports', label: '報表', icon: BarChart3 },
+    { id: 'backup', label: '數據備份中心', icon: Database },
   ] as const;
 
 
@@ -118,11 +120,15 @@ export default function Sidebar({
       {/* Footer Nav Settings/Profile */}
       <div className="p-3 border-t border-zinc-850 bg-zinc-900/50 space-y-0.5">
         <button 
-          onClick={() => alert("目前為 B哥 單人演示模式，如需修改設置請配置 WhatsApp 同步。")}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md font-medium text-xs text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition cursor-pointer"
+          onClick={() => onViewChange('backup')}
+          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md font-medium text-xs transition duration-155 cursor-pointer ${
+            currentView === 'backup'
+              ? 'bg-zinc-805 text-emerald-405 font-bold border-l-[3px] border-emerald-505 pl-2.5 shadow-inner text-emerald-400 bg-zinc-800'
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+          }`}
         >
           <Settings className="w-4 h-4 text-zinc-500" />
-          <span className="text-left">設定</span>
+          <span className="text-left">安全與數據備份</span>
         </button>
         <div className="w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-md font-medium text-xs text-zinc-500 hover:text-zinc-400 transition">
           <div className="flex items-center gap-2.5">

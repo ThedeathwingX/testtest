@@ -26,10 +26,9 @@ export default function KanbanView({ cards, onUpdateCards, onViewClientDetail }:
   // Define our Kanban stages
   const stages: KanbanStage[] = [
     { id: 'new', title: '新查詢', color: 'bg-emerald-500' },
-    { id: 'replied', title: '已回覆', color: 'bg-zinc-500' },
-    { id: 'requirement', title: '已了解需求', color: 'bg-teal-500' },
-    { id: 'pushed', title: '已推盤', color: 'bg-indigo-500' },
-    { id: 'viewed', title: '已約睇樓', color: 'bg-amber-500' }
+    { id: 'viewed', title: '已睇樓', color: 'bg-amber-500' },
+    { id: 'applied', title: '已申請購入', color: 'bg-indigo-500' },
+    { id: 'closing', title: '成交手續中', color: 'bg-teal-500' }
   ];
 
   // Shifting columns action

@@ -19,15 +19,25 @@ import {
   CheckCircle2,
   Settings,
   Trash2,
-  X
+  X,
+  Upload,
+  FileText,
+  TrendingUp
 } from 'lucide-react';
-import { ClientProfile, FollowUpNote } from '../types';
+import { ClientProfile, FollowUpNote, ClosedDeal, Property, ClientRecommendation } from '../types';
 
 interface ClientDetailViewProps {
   client: ClientProfile;
   onUpdateClientNotes: (updatedNotes: FollowUpNote[]) => void;
   onUpdateClientProfile?: (updatedClient: ClientProfile) => void;
   onDeleteClient?: (id: string) => void;
+  completedTransactions?: ClosedDeal[];
+  onDeleteCompletedTransaction?: (id: string) => void;
+  recommendations?: ClientRecommendation[];
+  properties?: Property[];
+  onAddRecommendation?: (newRec: ClientRecommendation) => void;
+  onUpdateRecommendationStatus?: (id: string, status: ClientRecommendation['status']) => void;
+  onDeleteRecommendation?: (id: string) => void;
 }
 
 type SubTab = 'notes' | 'properties' | 'viewings' | 'cases' | 'documents';
@@ -36,7 +46,14 @@ export default function ClientDetailView({
   client, 
   onUpdateClientNotes,
   onUpdateClientProfile,
-  onDeleteClient
+  onDeleteClient,
+  completedTransactions = [],
+  onDeleteCompletedTransaction,
+  recommendations = [],
+  properties = [],
+  onAddRecommendation,
+  onUpdateRecommendationStatus,
+  onDeleteRecommendation
 }: ClientDetailViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('notes');
   const [noteText, setNoteText] = useState('');
@@ -44,8 +61,73 @@ export default function ClientDetailView({
   const [nextStepText, setNextStepText] = useState('');
   const [answerText, setAnswerText] = useState('');
 
+  // Local state for recommending property
+  const [showRecForm, setShowRecForm] = useState(false);
+  const [recPropId, setRecPropId] = useState('');
+  const [recStatus, setRecStatus] = useState<ClientRecommendation['status']>('已送達 / 考慮中');
+  const [recNotes, setRecNotes] = useState('');
+
+  const handleAddRecInline = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recPropId) {
+      alert('請先選取一款推薦的物業！');
+      return;
+    }
+    const propObj = properties.find(p => p.id === recPropId);
+    if (!propObj) {
+      alert('無效的物業！');
+      return;
+    }
+
+    if (onAddRecommendation) {
+      onAddRecommendation({
+        id: `rec_${Date.now()}`,
+        clientId: client.id,
+        clientName: client.name,
+        clientPhone: client.phone,
+        propertyId: propObj.id,
+        propertyName: propObj.name,
+        propertyPrice: propObj.price,
+        propertyYieldNet: propObj.yieldNet,
+        propertyArea: propObj.area,
+        recommendedDate: new Date().toISOString().replace('T', ' ').substring(0, 16),
+        status: recStatus,
+        notes: recNotes.trim() || '已一鍵配對並推薦客戶。'
+      });
+      setRecNotes('');
+      setRecPropId('');
+      setShowRecForm(false);
+      alert(`【推介記錄新增成功】已向客戶「${client.name}」推薦物業「${propObj.name}」！`);
+    } else {
+      alert('無法新增，功能綁定未就緒');
+    }
+  };
+
   const [syncedIds, setSyncedIds] = useState<string[]>([]);
   const [isSyncingLive, setIsSyncingLive] = useState(false);
+
+  // Client Documents States
+  const [clientDocsMap, setClientDocsMap] = useState<Record<string, Array<{id: string; name: string; size: string; date: string}>>>({
+    'c1': [
+      { id: '1', name: '[已備齊] 東京新宿收益物業重要事項告知書.pdf', size: '2.4 MB', date: '2026-06-15' },
+      { id: '2', name: '[已備齊] 難波套房1402謄本登記帳目.pdf', size: '1.1 MB', date: '2026-06-16' }
+    ],
+    'c2': [
+      { id: '1', name: '[審核中] 林生大阪公司特許經營合規聲明.pdf', size: '1.7 MB', date: '2026-06-14' }
+    ],
+    'c3': [
+      { id: '1', name: '[已確認] 梅田全棟大樓公用契修繕報告.pdf', size: '3.8 MB', date: '2026-06-13' }
+    ],
+    'c4': [
+      { id: '1', name: '[已備齊] 京都東山管委會官方會議決議抄本.pdf', size: '945 KB', date: '2026-06-12' }
+    ],
+    'c5': [
+      { id: '1', name: '[審核中] 大阪城東區留學及經營簽證資金來源核實文件.pdf', size: '4.2 MB', date: '2026-06-11' }
+    ]
+  });
+  const [dragActive, setDragActive] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [manualFileName, setManualFileName] = useState('');
 
   // Edit Profile States
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -60,6 +142,7 @@ export default function ClientDetailView({
   const [editPropertyType, setEditPropertyType] = useState(client.propertyType);
   const [editPurpose, setEditPurpose] = useState(client.purpose);
   const [editFundingPower, setEditFundingPower] = useState(client.fundingPower);
+  const [editDealStatus, setEditDealStatus] = useState(client.dealStatus || '意向排查中');
 
   // Open Edit Modal and load current state
   const openEditModal = () => {
@@ -74,6 +157,7 @@ export default function ClientDetailView({
     setEditPropertyType(client.propertyType);
     setEditPurpose(client.purpose);
     setEditFundingPower(client.fundingPower);
+    setEditDealStatus(client.dealStatus || '意向排查中');
     setIsEditingProfile(true);
   };
 
@@ -98,7 +182,8 @@ export default function ClientDetailView({
         preferredArea: editPreferredArea,
         propertyType: editPropertyType,
         purpose: editPurpose,
-        fundingPower: editFundingPower
+        fundingPower: editFundingPower,
+        dealStatus: editDealStatus
       };
       onUpdateClientProfile(updatedClient);
       setIsEditingProfile(false);
@@ -224,11 +309,127 @@ export default function ClientDetailView({
     alert('已成功將跟進對話紀錄歸檔存盤！');
   };
 
-  // Generate continuous layout coordinates for heatmap
-  const heatmapCells = Array.from({ length: 42 }).map((_, i) => ({
-    active: i % 7 === 0 || i % 5 === 2 || i === 12 || i === 23,
-    level: (i * 3 + 2) % 4
-  }));
+  // Generate continuous layout coordinates for heatmap reflecting real client followUpNotes
+  const baseDate = (() => {
+    let maxTime = new Date().getTime(); // default today
+    if (client.followUpNotes && client.followUpNotes.length > 0) {
+      client.followUpNotes.forEach(note => {
+        const parts = note.timestamp.split(' ')[0].split('-');
+        if (parts.length === 3) {
+          const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+          if (!isNaN(d.getTime()) && d.getTime() > maxTime) {
+            maxTime = d.getTime();
+          }
+        }
+      });
+    }
+    return new Date(maxTime);
+  })();
+
+  const heatmapCells = Array.from({ length: 42 }).map((_, i) => {
+    // index 41 is the baseDate, index 0 is baseDate - 41 days ago
+    const d = new Date(baseDate);
+    d.setDate(d.getDate() - (41 - i));
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
+    // Check if there are followUpNotes for this dateStr
+    const notesForDate = (client.followUpNotes || []).filter(note => {
+      return note.timestamp.startsWith(dateStr);
+    });
+    
+    const count = notesForDate.length;
+    const active = count > 0;
+    
+    let level = 0;
+    if (count === 1) level = 1;
+    else if (count === 2) level = 2;
+    else if (count >= 3) level = 3;
+
+    return {
+      dateStr,
+      active,
+      level,
+      count,
+      notes: notesForDate
+    };
+  });
+
+  // Document Upload handlers
+  const handleDrag = function(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = function(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      triggerUpload(file.name, file.size);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      triggerUpload(file.name, file.size);
+    }
+  };
+
+  const handleManualUpload = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualFileName.trim()) return;
+    const sizeStr = `${(1 + Math.random() * 5).toFixed(1)} MB`;
+    triggerUpload(manualFileName.trim(), sizeStr);
+    setManualFileName('');
+  };
+
+  const triggerUpload = (fileName: string, fileSizeVal: string | number) => {
+    let sizeString = '';
+    if (typeof fileSizeVal === 'number') {
+      if (fileSizeVal > 1024 * 1024) {
+        sizeString = (fileSizeVal / (1024 * 1024)).toFixed(1) + ' MB';
+      } else {
+        sizeString = (fileSizeVal / 1024).toFixed(0) + ' KB';
+      }
+    } else {
+      sizeString = fileSizeVal;
+    }
+
+    setIsUploading(true);
+    setTimeout(() => {
+      setIsUploading(false);
+      const newDoc = {
+        id: 'doc_' + Date.now(),
+        name: fileName.endsWith('.pdf') || fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') ? fileName : fileName + '.pdf',
+        size: sizeString,
+        date: new Date().toISOString().split('T')[0]
+      };
+      
+      const currentClientDocs = clientDocsMap[client.id] || [];
+      setClientDocsMap({
+        ...clientDocsMap,
+        [client.id]: [newDoc, ...currentClientDocs]
+      });
+    }, 1200);
+  };
+
+  const handleDeleteDoc = (docId: string) => {
+    const currentClientDocs = clientDocsMap[client.id] || [];
+    setClientDocsMap({
+      ...clientDocsMap,
+      [client.id]: currentClientDocs.filter(d => d.id !== docId)
+    });
+  };
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 animate-in fade-in-50 duration-200">
@@ -342,31 +543,33 @@ export default function ClientDetailView({
                 </div>
 
                 <div className="space-y-1">
+                  <label className="font-bold text-zinc-700 flex items-center gap-1.5 text-emerald-800">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    <span>當前成交狀態 (Deal Status)</span>
+                  </label>
+                  <select
+                    value={editDealStatus}
+                    onChange={(e) => setEditDealStatus(e.target.value)}
+                    className="w-full border border-zinc-200 bg-zinc-50 rounded-lg p-2 focus:bg-white focus:outline-none font-bold text-emerald-900"
+                  >
+                    <option value="意向排查中"> 跟進中：1. 意向排查預熱</option>
+                    <option value="視像睇樓中"> 跟進中：2. 視像現場帶看</option>
+                    <option value="買付書提出"> 跟進中：3. 買付申込書提出</option>
+                    <option value="重要事項講解"> 流程：4. 宅建士特別講解</option>
+                    <option value="雙方簽約中"> 流程：5. 雙方契約用印</option>
+                    <option value="安全款付中"> 流程：6. 首期/尾款安全匯付</option>
+                    <option value="產權已過户"> 流程：7. 司法書士正式過户</option>
+                    <option value="託管及收租"> 售後：8. 託管高能收租中</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
                   <label className="font-bold text-zinc-700">物業需求類型</label>
                   <input
                     type="text"
                     value={editPropertyType}
                     onChange={(e) => setEditPropertyType(e.target.value)}
                     className="w-full border border-zinc-200 bg-zinc-50 rounded-lg p-2 focus:bg-white focus:border-emerald-500 outline-none text-zinc-800"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-700">置業首要目的</label>
-                  <input
-                    type="text"
-                    value={editPurpose}
-                    onChange={(e) => setEditPurpose(e.target.value)}
-                    className="w-full border border-zinc-200 bg-zinc-50 rounded-lg p-2 focus:bg-white focus:border-emerald-500 outline-none text-zinc-850"
-                  />
-                </div>
-
-                <div className="space-y-1 md:col-span-2">
-                  <label className="font-bold text-zinc-700">資金流實力核實</label>
-                  <input
-                    type="text"
-                    value={editFundingPower}
-                    onChange={(e) => setEditFundingPower(e.target.value)}
-                    className="w-full border border-zinc-200 bg-zinc-50 rounded-lg p-2 focus:bg-white focus:border-emerald-500 outline-none text-emerald-800 font-bold"
                   />
                 </div>
               </div>
@@ -418,15 +621,7 @@ export default function ClientDetailView({
             </button>
           </div>
 
-          <div className="w-20 h-20 rounded-full border-2 border-white shadow overflow-hidden z-10 mt-2 mb-3 bg-white">
-            <img 
-              alt={client.name} 
-              className="w-full h-full object-cover" 
-              src={client.avatarUrl || "https://lh3.googleusercontent.com/person"} 
-            />
-          </div>
-
-          <h2 className="text-md font-bold text-zinc-900 z-10">{client.name} {client.engName && <span className="text-zinc-400">({client.engName})</span>}</h2>
+          <h2 className="text-md font-bold text-zinc-900 z-10 mt-4">{client.name} {client.engName && <span className="text-zinc-400">({client.engName})</span>}</h2>
           
           <div className="flex items-center gap-2 mt-1.5 z-10">
             <span className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200 uppercase tracking-wide">
@@ -462,7 +657,7 @@ export default function ClientDetailView({
         <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
           <h3 className="text-xs font-bold text-zinc-800 mb-4 border-b border-zinc-100 pb-2.5 flex items-center gap-1.5 uppercase tracking-wide">
             <PieChart className="w-4 h-4 text-emerald-600" />
-            <span>合規投資意念 & 需求</span>
+            <span>預算及目標區域</span>
           </h3>
 
           <ul className="space-y-3.5 text-xs text-zinc-700">
@@ -478,15 +673,14 @@ export default function ClientDetailView({
               <span className="text-zinc-400 font-medium">物業目標 (Type)</span>
               <span className="font-semibold text-zinc-800">{client.propertyType}</span>
             </li>
-            <li className="flex justify-between items-center py-0.5">
-              <span className="text-zinc-400 font-medium">置業目標 (Purpose)</span>
-              <span className="text-rose-600 font-bold bg-rose-50 border border-rose-100 px-2 py-0.5 rounded text-[10px] uppercase">
-                {client.purpose}
+            <li className="flex justify-between items-center py-1.5 border-t border-dashed border-zinc-150 mt-2">
+              <span className="text-zinc-500 font-extrabold flex items-center gap-1">
+                <RefreshCw className="w-3.5 h-3.5 text-emerald-600 animate-spin-slow" />
+                <span>成交狀態</span>
               </span>
-            </li>
-            <li className="flex justify-between items-center py-0.5">
-              <span className="text-zinc-400 font-medium">資金流儲備 (Ability)</span>
-              <span className="font-semibold text-emerald-700">{client.fundingPower}</span>
+              <span className="font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded px-2.5 py-1 text-[11px] uppercase tracking-wide">
+                {client.dealStatus || '意向排查中'}
+              </span>
             </li>
           </ul>
         </div>
@@ -498,7 +692,9 @@ export default function ClientDetailView({
               <Flame className="w-4 h-4 text-rose-500 shrink-0" />
               <span>跟進活躍度 Heatmap</span>
             </h3>
-            <span className="text-[10px] text-zinc-405 font-mono">Q4 已進行 31 次紀錄</span>
+            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-mono font-bold">
+              累計 {client.followUpNotes?.length || 0} 次記錄
+            </span>
           </div>
 
           <div className="bg-zinc-50 rounded-lg p-3 border border-zinc-150 flex flex-col items-center justify-center">
@@ -514,7 +710,7 @@ export default function ClientDetailView({
                   <div 
                     key={idx}
                     className={`w-4.5 h-4.5 rounded-[1px] hover:ring-1 hover:ring-zinc-400 cursor-help transition-all ${colorClass}`}
-                    title={`第 ${idx + 1} 日跟進諮詢強度`}
+                    title={`${cell.dateStr}: 當天有 ${cell.count} 次跟進諮詢記錄${cell.notes.length > 0 ? ` (${cell.notes.map(n => n.question.substring(0, 10)).join(', ')}...)` : ''}`}
                   />
                 );
               })}
@@ -558,7 +754,7 @@ export default function ClientDetailView({
                 : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800'
             }`}
           >
-            推過筍盤
+            推介樓盤記錄
           </button>
           <button 
             onClick={() => setActiveSubTab('viewings')}
@@ -804,39 +1000,208 @@ export default function ClientDetailView({
           </div>
         )}
 
-        {/* Dummy/Pushed Properties Tab */}
+        {/* Real Dynamic Properties Tab (推介樓盤記錄) */}
         {activeSubTab === 'properties' && (
           <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm space-y-4">
-            <h3 className="text-xs font-bold text-zinc-850 uppercase border-b pb-2">已向客推薦之精選筍盤</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="border border-zinc-200 rounded-xl overflow-hidden hover:border-emerald-500 transition shadow-sm bg-zinc-50 flex flex-col justify-between">
-                <div className="p-4 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-zinc-800">難波公園南側公寓大樓</span>
-                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 rounded">毛回報 6.2%</span>
-                  </div>
-                  <p className="text-zinc-500 text-xs">大阪市浪速區難波中，1LDK 套房，屋苑配套極優。</p>
-                  <p className="text-zinc-900 text-xs font-mono font-bold">預估價格：JPY 4,500 萬</p>
-                </div>
-                <div className="p-3 bg-zinc-100 border-t border-zinc-200 text-right">
-                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border">已發送樓書及詳盡修繕金清單</span>
-                </div>
+            <div className="flex justify-between items-center border-b pb-2">
+              <div className="space-y-0.5">
+                <h3 className="text-xs font-black text-zinc-850 uppercase">
+                  推介樓盤記錄 ({client.name})
+                </h3>
+                <p className="text-[10px] text-zinc-400">
+                  記錄與追蹤發送予此大客的所有精選日本物業、實質回報與其表態狀態。
+                </p>
               </div>
-
-              <div className="border border-zinc-200 rounded-xl overflow-hidden hover:border-emerald-500 transition shadow-sm bg-zinc-50 flex flex-col justify-between">
-                <div className="p-4 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-zinc-800">心齋橋周邊全棟收租店鋪物業</span>
-                    <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 rounded">實質回報 5.4%</span>
-                  </div>
-                  <p className="text-zinc-500 text-xs">大阪市中央區東心齋橋，黃金地段，全棟滿租。</p>
-                  <p className="text-zinc-900 text-xs font-mono font-bold">預估價格：JPY 7,900 萬</p>
-                </div>
-                <div className="p-3 bg-zinc-100 border-t border-zinc-200 text-right">
-                  <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border">客戶強烈感興趣、擬定約視像睇樓</span>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRecForm(!showRecForm);
+                  if (properties.length > 0 && !recPropId) {
+                    setRecPropId(properties[0].id);
+                  }
+                }}
+                className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-zinc-950 font-black text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer transition"
+              >
+                {showRecForm ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                <span>{showRecForm ? '取消推薦' : '手動推薦新盤'}</span>
+              </button>
             </div>
+
+            {/* Recommendations Form inline */}
+            {showRecForm && (
+              <form onSubmit={handleAddRecInline} className="bg-zinc-50 border border-zinc-200 rounded-xl p-4.5 space-y-3.5 animate-in slide-in-from-top-2 duration-150">
+                <div className="text-xs font-bold text-zinc-700">新開推介樓盤一鍵登載</div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10.5px] text-zinc-450 font-extrabold mb-1">精選日本物業標的</label>
+                    <select
+                      value={recPropId}
+                      onChange={(e) => setRecPropId(e.target.value)}
+                      className="w-full text-xs border border-zinc-200 rounded-lg p-2 bg-white outline-none focus:border-emerald-500 font-semibold"
+                    >
+                      <option value="">-- 請選取推薦物業 --</option>
+                      {properties.map(p => (
+                        <option key={p.id} value={p.id}>
+                          [{p.area}] {p.name} - ¥{(p.price / 10000).toLocaleString('zh-HK')} 萬
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] text-zinc-450 font-extrabold mb-1">目前大客表態/流程進度</label>
+                    <select
+                      value={recStatus}
+                      onChange={(e) => setRecStatus(e.target.value as any)}
+                      className="w-full text-xs border border-zinc-200 rounded-lg p-2 bg-white outline-none focus:border-emerald-500 font-semibold"
+                    >
+                      <option value="已送達 / 考慮中">已送達 / 考慮中</option>
+                      <option value="感興趣 / 預約帶看">感興趣 / 預約帶看</option>
+                      <option value="高意向 / 準備買付">高意向 / 準備買付</option>
+                      <option value="客戶婉拒">客戶婉拒</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10.5px] text-zinc-450 font-extrabold mb-1">推介備忘 / 客戶反饋備案</label>
+                  <textarea
+                    value={recNotes}
+                    onChange={(e) => setRecNotes(e.target.value)}
+                    placeholder="例如：客戶特別喜歡其高租金收益，但對修繕提存金有疑問，已發送說明書。"
+                    rows={2}
+                    className="w-full text-xs border border-zinc-200 rounded-lg p-2.5 outline-none focus:border-emerald-500 font-semibold"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setShowRecForm(false)}
+                    className="px-3 py-1.5 border border-zinc-200 rounded-lg font-bold text-zinc-500 bg-white hover:bg-zinc-50 transition cursor-pointer"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-450 active:bg-emerald-600 text-zinc-950 rounded-lg font-bold transition cursor-pointer"
+                  >
+                    確認一鍵發送並紀錄
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* List of active client's recommendations */}
+            {(() => {
+              const matchedRecs = recommendations.filter(
+                rec => rec.clientId === client.id || rec.clientPhone === client.phone
+              );
+
+              const formatPriceJPY = (price: number) => {
+                if (price >= 10000) {
+                  return `¥${(price / 10000).toLocaleString('zh-HK')} 萬`;
+                }
+                return `¥${price.toLocaleString('zh-HK')} 日圓`;
+              };
+
+              if (matchedRecs.length === 0) {
+                return (
+                  <div className="p-6 border-2 border-dashed border-zinc-200 rounded-xl text-center bg-zinc-50 space-y-2">
+                    <Building className="w-8 h-8 text-zinc-300 mx-auto" />
+                    <p className="text-zinc-650 text-xs font-bold">目前無此大客的置業推介樓盤記錄。</p>
+                    <p className="text-zinc-400 text-[10.5px]">
+                      您可以點擊右上方「手動推薦新盤」為該客戶增錄推薦樓盤。
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {matchedRecs.map((rec) => (
+                    <div key={rec.id} className="border border-zinc-200 rounded-xl overflow-hidden hover:border-emerald-500 transition-all shadow-sm bg-zinc-50 flex flex-col justify-between">
+                      <div className="p-4 space-y-2">
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-xs font-black text-zinc-800 leading-tight">
+                            {rec.propertyName}
+                          </span>
+                          <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded shrink-0 ${
+                            rec.status === '高意向 / 準備買付'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : rec.status === '感興趣 / 預約帶看'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : rec.status === '客戶婉拒'
+                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                          }`}>
+                            {rec.status}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-x-2 text-[10.5px] text-zinc-500 font-bold">
+                          <div>
+                            區域: <span className="text-zinc-700 font-medium">{rec.propertyArea}</span>
+                          </div>
+                          <div>
+                            淨回報: <span className="text-emerald-700 font-mono font-bold">{rec.propertyYieldNet}% 淨</span>
+                          </div>
+                        </div>
+
+                        <p className="text-zinc-900 text-xs font-mono font-bold">
+                          預估價格：{formatPriceJPY(rec.propertyPrice)}
+                        </p>
+
+                        {rec.notes && (
+                          <div className="bg-white border border-zinc-150 p-2 rounded-lg text-[10px] text-zinc-500 font-medium italic">
+                            隨錄記錄："{rec.notes}"
+                          </div>
+                        )}
+                        
+                        <div className="text-[9px] text-zinc-400 font-medium">
+                          推介日期：{rec.recommendedDate}
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 bg-zinc-100 border-t border-zinc-200 flex justify-between items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9.5px] font-extrabold text-zinc-450 uppercase">進度切換:</span>
+                          <select
+                            value={rec.status}
+                            onChange={(e) => {
+                              if (onUpdateRecommendationStatus) {
+                                onUpdateRecommendationStatus(rec.id, e.target.value as any);
+                              }
+                            }}
+                            className="text-[10px] border border-zinc-200 rounded-md font-bold bg-white px-2 py-0.5 text-zinc-700 outline-none focus:border-emerald-500"
+                          >
+                            <option value="已送達 / 考慮中">考慮中</option>
+                            <option value="感興趣 / 預約帶看">預約帶看</option>
+                            <option value="高意向 / 準備買付">準備買付</option>
+                            <option value="客戶婉拒">客戶婉拒</option>
+                          </select>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`確定要為該客戶刪除物業推薦記錄「${rec.propertyName}」嗎？`)) {
+                              if (onDeleteRecommendation) {
+                                onDeleteRecommendation(rec.id);
+                              }
+                            }
+                          }}
+                          className="text-rose-600 hover:bg-rose-50 p-1.5 rounded transition cursor-pointer"
+                          title="刪除"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -856,29 +1221,231 @@ export default function ClientDetailView({
           </div>
         )}
 
-        {/* Dummy Cases Tab */}
+        {/* Real Dynamic Cases Tab */}
         {activeSubTab === 'cases' && (
           <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm space-y-4">
-            <h3 className="text-xs font-bold text-zinc-850 uppercase border-b pb-2">成交案件履歷</h3>
-            <div className="p-4 border-2 border-dashed border-zinc-200 rounded-lg text-center bg-zinc-50">
-              <FileCheck2 className="w-8 h-8 text-emerald-600 mx-auto stroke-[1.5]" />
-              <p className="text-zinc-600 text-xs font-bold mt-2">物業大阪 Tower B #Unit 1402 已提交買付申込書！</p>
-              <p className="text-zinc-400 text-[11px] mt-1">目前進度流程為：標準成交流程第 6/12 步 (重要事項告知書收到)。</p>
+            <div className="flex justify-between items-center border-b pb-2">
+              <h3 className="text-xs font-black text-zinc-850 uppercase">
+                成交與歸檔案件履歷 ({client.name})
+              </h3>
+              <span className="text-[10px] text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded font-bold">
+                大簿歷史成交
+              </span>
             </div>
+
+            {(() => {
+              const matchedDeals = completedTransactions.filter(
+                (deal) => deal.clientName === client.name || deal.clientPhone === client.phone
+              );
+
+              // Standard currency formatting helpers
+              const formatJPY = (val: number) => {
+                return '¥' + Math.round(val).toLocaleString('zh-HK') + ' 日圓';
+              };
+
+              if (matchedDeals.length === 0) {
+                return (
+                  <div className="p-6 border-2 border-dashed border-zinc-200 rounded-xl text-center bg-zinc-50 space-y-2">
+                    <FileCheck2 className="w-8 h-8 text-zinc-300 mx-auto" />
+                    <p className="text-zinc-600 text-xs font-bold">目前暫無該買家的已完成交易存檔件。</p>
+                    <p className="text-zinc-400 text-[10.5px]">
+                      您可以前往「成交流程跟進 (Checklist)」為此客戶一鍵封箱建檔，或手動錄入歷史成交案。
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-4">
+                  {matchedDeals.map((deal) => (
+                    <div key={deal.id} className="p-4 border border-zinc-200 rounded-xl bg-zinc-50/50 hover:bg-zinc-50 hover:border-zinc-300 relative transition duration-150 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="text-xs font-extrabold text-zinc-850">
+                            {deal.propertyName}
+                          </h4>
+                          <span className={`text-[9.5px] px-2 py-0.5 rounded-full font-bold ${
+                            deal.status === '民宿託管運營中'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {deal.status}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-[11px] text-zinc-600 font-medium">
+                          <div>
+                            <span className="text-zinc-400">成交金額:</span> <strong className="font-mono text-zinc-900">{formatJPY(deal.propertyPrice)}</strong>
+                          </div>
+                          <div>
+                            <span className="text-zinc-400">託管回報(淨):</span> <strong className="font-mono text-emerald-700">{deal.yieldNet}% 淨</strong>
+                          </div>
+                          <div>
+                            <span className="text-zinc-400">登錄移轉日期:</span> <strong className="text-zinc-850 font-mono">{deal.contractDate}</strong>
+                          </div>
+                          <div>
+                            <span className="text-zinc-400">代理合約佣金:</span> <strong className="font-mono text-amber-800">{formatJPY(deal.agencyFee)}</strong>
+                          </div>
+                        </div>
+
+                        {deal.notes && (
+                          <p className="text-[10px] text-zinc-400 bg-white border border-dotted p-1.5 rounded-md mt-1 italic">
+                            備忘備案："{deal.notes}"
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="shrink-0 flex items-center self-end md:self-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`確定要為買家【${client.name}】刪除這宗【${deal.propertyName}】成交案件嗎？此操作不可逆。`)) {
+                              if (onDeleteCompletedTransaction) {
+                                onDeleteCompletedTransaction(deal.id);
+                                alert('成交案件已成功自歷史歸檔庫刪除。');
+                              } else {
+                                alert('刪除失敗，未檢測到正確的功能綁定。');
+                              }
+                            }
+                          }}
+                          className="bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 text-rose-600 font-black text-[10px] px-3 py-1.5 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>刪除案件</span>
+                        </button>
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 
-        {/* Dummy Documents Tab */}
+        {/* Dynamic Client Document Section */}
         {activeSubTab === 'documents' && (
-          <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm space-y-3">
-            <h3 className="text-xs font-bold text-zinc-850 uppercase border-b pb-2">合規上傳文件紀錄 (宅建法)</h3>
-            <div className="flex items-center justify-between p-3 border border-zinc-200 bg-zinc-50 rounded-lg text-xs leading-none">
-              <span className="font-semibold text-zinc-800 font-mono">[已備齊] 東京新宿收益物業重要事項告知書.pdf</span>
-              <span className="text-zinc-400 font-mono">2.4 MB</span>
+          <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm space-y-5">
+            <div className="flex justify-between items-center border-b pb-2">
+              <h3 className="text-xs font-bold text-zinc-850 uppercase">
+                客戶專屬置業合規文件資料庫 ({client.name})
+              </h3>
+              <span className="text-[10px] text-zinc-400 bg-zinc-100 font-mono px-2 py-0.5 rounded">
+                宅建物業審核
+              </span>
             </div>
-            <div className="flex items-center justify-between p-3 border border-zinc-200 bg-zinc-50 rounded-lg text-xs leading-none">
-              <span className="font-semibold text-zinc-800 font-mono">[已備齊] 難波套房1402謄本登記帳目.pdf</span>
-              <span className="text-zinc-400 font-mono">1.1 MB</span>
+
+            {/* Drag & Drop Upload Zone */}
+            <div 
+              onDragEnter={handleDrag}
+              onDragOver={handleDrag}
+              onDragLeave={handleDrag}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-xl p-6 text-center transition duration-150 relative ${
+                dragActive 
+                  ? 'border-emerald-500 bg-emerald-50/50' 
+                  : 'border-zinc-200 hover:border-zinc-300 bg-zinc-50/50'
+              }`}
+            >
+              <input 
+                id="client-file-upload"
+                type="file" 
+                multiple={false}
+                onChange={handleFileChange}
+                className="hidden"
+              />
+
+              {isUploading ? (
+                <div className="space-y-3 py-2">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto animate-spin">
+                    <RefreshCw className="w-4 h-4" />
+                  </div>
+                  <div className="text-xs font-bold text-emerald-800">
+                    大阪合規檢索與加密上傳中...
+                  </div>
+                  <div className="w-32 bg-zinc-200 h-1 rounded-full mx-auto overflow-hidden">
+                    <div className="bg-emerald-500 h-full animate-pulse" style={{ width: '65%' }}></div>
+                  </div>
+                  <p className="text-[10px] text-zinc-400">正在查驗產權登記事項並進行SHA256核實</p>
+                </div>
+              ) : (
+                <label 
+                  htmlFor="client-file-upload"
+                  className="cursor-pointer space-y-2 block"
+                >
+                  <Upload className="w-8 h-8 text-zinc-400 mx-auto" />
+                  <div className="text-xs font-semibold text-zinc-700">
+                    拖放置業合規文件至此，或 <span className="text-emerald-600 underline">瀏覽電腦上傳</span>
+                  </div>
+                  <p className="text-[10px] text-zinc-400">
+                    支援 PDF, PNG, JPG, EXCEL 格式 (最大 25 MB)
+                  </p>
+                </label>
+              )}
+            </div>
+
+            {/* Manual Filing Tool */}
+            <form onSubmit={handleManualUpload} className="flex gap-2 items-center bg-zinc-50 p-2.5 rounded-lg border border-zinc-200">
+              <input 
+                type="text"
+                required
+                value={manualFileName}
+                onChange={(e) => setManualFileName(e.target.value)}
+                placeholder="輸入自訂合規文件名，例如：一戶建融資核定書.pdf"
+                className="flex-1 text-xs border border-zinc-200 rounded-md px-2 py-1.5 bg-white outline-none focus:border-emerald-500"
+              />
+              <button 
+                type="submit"
+                className="bg-zinc-805 bg-stone-850 hover:bg-zinc-950 text-stone-200 text-xs font-bold px-3 py-1.5 rounded-md shadow-xs transition shrink-0"
+              >
+                手動登記備查
+              </button>
+            </form>
+
+            {/* Document Browser List */}
+            <div className="space-y-2.5">
+              <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide">
+                已歸檔合規清單 ({ (clientDocsMap[client.id] || []).length })
+              </h4>
+
+              { (clientDocsMap[client.id] || []).length === 0 ? (
+                <div className="text-center py-6 text-zinc-400 text-xs border border-dashed rounded-lg">
+                  當前無上傳文件。請由上方拖放或在表單中手動填加。
+                </div>
+              ) : (
+                (clientDocsMap[client.id] || []).map((doc) => (
+                  <div 
+                    key={doc.id}
+                    className="flex items-center justify-between p-3 border border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 bg-white rounded-lg transition animate-in zoom-in-95"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div className="truncate">
+                        <div className="text-xs font-semibold text-zinc-800 truncate font-mono">
+                          {doc.name}
+                        </div>
+                        <div className="text-[9.5px] text-zinc-400 mt-0.5">
+                          上傳日期: {doc.date}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-[10.5px] text-zinc-500 font-mono font-bold bg-zinc-100 px-1.5 py-0.5 rounded border">
+                        {doc.size}
+                      </span>
+                      <button 
+                        onClick={() => handleDeleteDoc(doc.id)}
+                        type="button"
+                        className="text-zinc-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition cursor-pointer"
+                        title="清除文件"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}

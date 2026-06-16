@@ -16,29 +16,46 @@ import {
   ShieldAlert,
   Flame,
   CheckCircle,
-  FolderLock
+  FolderLock,
+  Printer
 } from 'lucide-react';
-import { ClientProfile, FollowUpNote } from '../types';
+import { ClientProfile, FollowUpNote, ClosedDeal, Property, ClientRecommendation } from '../types';
 import ClientDetailView from './ClientDetailView';
+import BatchExportModal from './BatchExportModal';
 
 interface ClientsViewProps {
   clients: ClientProfile[];
   selectedClientId: string;
   onSelectClient: (id: string) => void;
   onUpdateClients: (updatedClients: ClientProfile[]) => void;
+  completedTransactions?: ClosedDeal[];
+  onDeleteCompletedTransaction?: (id: string) => void;
+  recommendations?: ClientRecommendation[];
+  properties?: Property[];
+  onAddRecommendation?: (newRec: ClientRecommendation) => void;
+  onUpdateRecommendationStatus?: (id: string, status: ClientRecommendation['status']) => void;
+  onDeleteRecommendation?: (id: string) => void;
 }
 
 export default function ClientsView({ 
   clients, 
   selectedClientId, 
   onSelectClient, 
-  onUpdateClients 
+  onUpdateClients,
+  completedTransactions = [],
+  onDeleteCompletedTransaction,
+  recommendations = [],
+  properties = [],
+  onAddRecommendation,
+  onUpdateRecommendationStatus,
+  onDeleteRecommendation
 }: ClientsViewProps) {
   
   const [localSearch, setLocalSearch] = useState('');
   const [vipFilter, setVipFilter] = useState<string>('All');
   const [heatFilter, setHeatFilter] = useState<string>('All');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Form Field States
   const [newName, setNewName] = useState('');
@@ -52,6 +69,7 @@ export default function ClientsView({
   const [newPropType, setNewPropType] = useState('一戶建');
   const [newPurpose, setNewPurpose] = useState('投資收租');
   const [newFundingPower, setNewFundingPower] = useState('現金買家');
+  const [newDealStatus, setNewDealStatus] = useState('意向排查中');
   const [initialInquiry, setInitialInquiry] = useState('');
 
   // Handle Note Update for a particular client
@@ -84,7 +102,7 @@ export default function ClientsView({
         type: 'WhatsApp',
         question: initialInquiry,
         answer: '已收悉置業意向。B哥已第一時間跟進，安排提供日本合規一戶建/公寓首選清單。',
-        nextStep: '加微信或WhatsApp即時發送精選大阪筍盤手冊。'
+        nextStep: '加微信 or WhatsApp即時發送精選大阪筍盤手冊。'
       });
     }
 
@@ -101,6 +119,7 @@ export default function ClientsView({
       propertyType: newPropType,
       purpose: newPurpose,
       fundingPower: newFundingPower,
+      dealStatus: newDealStatus,
       avatarUrl: mockAvatar,
       followUpNotes: notes
     };
@@ -114,6 +133,7 @@ export default function ClientsView({
     setNewEngName('');
     setNewPhone('');
     setNewEmail('');
+    setNewDealStatus('意向排查中');
     setInitialInquiry('');
     alert(`【客戶資料登記成功】\n${newName} 先生/女士 已成功錄入置業合規跟進檔案！`);
   };
@@ -153,24 +173,34 @@ export default function ClientsView({
             合規建檔、全流程意向追蹤，為每位海外置業買家配對最乾淨的資產，杜絕伏盤。
           </p>
         </div>
-        <button
-          onClick={() => {
-            setShowAddForm(!showAddForm);
-          }}
-          className="bg-zinc-900 text-white hover:bg-zinc-800 active:bg-zinc-950 font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2 cursor-pointer self-start md:self-auto"
-        >
-          {showAddForm ? (
-            <>
-              <X className="w-4 h-4" />
-              <span>取消建檔</span>
-            </>
-          ) : (
-            <>
-              <UserPlus className="w-4 h-4" />
-              <span>手動錄入新置業大客</span>
-            </>
-          )}
-        </button>
+        <div className="flex flex-wrap gap-2.5 self-start md:self-auto">
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-zinc-950 font-extrabold text-xs px-4 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-95"
+          >
+            <Printer className="w-4 h-4" />
+            <span>批量匯出成合約摘要 (PDF)</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setShowAddForm(!showAddForm);
+            }}
+            className="bg-zinc-900 text-white hover:bg-zinc-800 active:bg-zinc-950 font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2 cursor-pointer"
+          >
+            {showAddForm ? (
+              <>
+                <X className="w-4 h-4" />
+                <span>取消建檔</span>
+              </>
+            ) : (
+              <>
+                <UserPlus className="w-4 h-4" />
+                <span>手動錄入新置業大客</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -261,14 +291,6 @@ export default function ClientsView({
                         : 'bg-white border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50/50'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-full border bg-white shrink-0 overflow-hidden flex items-center justify-center">
-                      <img 
-                        src={c.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"} 
-                        alt={c.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-
                     <div className="flex-1 space-y-1">
                       <div className="flex justify-between items-start">
                         <h4 className="text-xs font-bold text-zinc-900 flex items-center gap-1">
@@ -291,11 +313,14 @@ export default function ClientsView({
 
                       <p className="text-[10px] text-zinc-500 font-medium font-mono">{c.phone}</p>
                       
-                      <div className="flex justify-between items-center text-[9px] pt-1 border-t border-dotted border-zinc-150">
-                        <span className="text-zinc-650 font-bold bg-zinc-100 px-1.5 py-0.5 rounded uppercase">
+                      <div className="flex justify-between items-center text-[9px] pt-1 border-t border-dotted border-zinc-150 gap-1">
+                        <span className="text-zinc-[650] font-bold bg-zinc-100 px-1.5 py-0.5 rounded uppercase shrink-0">
                           {c.vipTag}
                         </span>
-                        <strong className="text-emerald-700 font-mono">{c.budget}</strong>
+                        <span className="text-emerald-700 font-extrabold bg-emerald-50 border border-emerald-150 px-1.5 py-0.5 rounded truncate" title={c.dealStatus || '意向排查中'}>
+                          ⚡️ {c.dealStatus || '意向排查中'}
+                        </span>
+                        <strong className="text-emerald-700 font-mono shrink-0">{c.budget}</strong>
                       </div>
                     </div>
                   </div>
@@ -419,6 +444,28 @@ export default function ClientsView({
                   </select>
                 </div>
 
+                {/* 6.5. DEAL STATUS */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-zinc-700 flex items-center gap-1.5 text-emerald-800">
+                    <TrendingUp className="w-4 h-4" />
+                    <span>當前交易及成交狀態</span>
+                  </label>
+                  <select
+                    value={newDealStatus}
+                    onChange={(e) => setNewDealStatus(e.target.value)}
+                    className="w-full border border-zinc-200 bg-zinc-50 rounded-lg p-2 focus:bg-white focus:border-emerald-500 outline-none font-bold"
+                  >
+                    <option value="意向排查中">跟進：1. 意向排查預熱</option>
+                    <option value="視像睇樓中">跟進：2. 視像現場帶看</option>
+                    <option value="買付書提出">跟進：3. 買付申込書提出</option>
+                    <option value="重要事項講解">流程：4. 宅建士特別講解</option>
+                    <option value="雙方簽約中">流程：5. 雙方契約用印</option>
+                    <option value="安全款付中">流程：6. 首期/尾款安全匯付</option>
+                    <option value="產權已過户">流程：7. 司法書士正式過户</option>
+                    <option value="託管及收租">售後：8. 託管高能收租中</option>
+                  </select>
+                </div>
+
                 {/* 7. Budget */}
                 <div className="space-y-1.5">
                   <label className="font-bold text-zinc-700">7. 客戶投資總預算 (Budget)</label>
@@ -536,6 +583,13 @@ export default function ClientsView({
                         onSelectClient(afterDelete[0].id);
                       }
                     }}
+                    completedTransactions={completedTransactions}
+                    onDeleteCompletedTransaction={onDeleteCompletedTransaction}
+                    recommendations={recommendations}
+                    properties={properties}
+                    onAddRecommendation={onAddRecommendation}
+                    onUpdateRecommendationStatus={onUpdateRecommendationStatus}
+                    onDeleteRecommendation={onDeleteRecommendation}
                   />
                 </div>
               </div>
@@ -549,6 +603,12 @@ export default function ClientsView({
         </div>
 
       </div>
+
+      <BatchExportModal 
+        show={showExportModal} 
+        onClose={() => setShowExportModal(false)} 
+        clients={clients} 
+      />
 
     </div>
   );

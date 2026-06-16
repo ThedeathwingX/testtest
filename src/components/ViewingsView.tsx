@@ -2,19 +2,13 @@ import React, { useState } from 'react';
 import { 
   CalendarDays, 
   Clock, 
-  MapPin, 
-  User, 
-  Video, 
   Plus, 
   CheckCircle2, 
-  Play, 
   Compass, 
-  Sparkles,
-  PhoneCall,
-  Tv,
-  Check,
-  AlertTriangle,
-  UserCheck
+  ChevronLeft, 
+  ChevronRight,
+  User,
+  Check
 } from 'lucide-react';
 import { Viewing, Property } from '../types';
 
@@ -35,20 +29,14 @@ export default function ViewingsView({
   const [showAddForm, setShowAddForm] = useState(false);
   const [currentClient, setCurrentClient] = useState('');
   const [selectedPropName, setSelectedPropName] = useState(properties[0]?.name || '');
-  const [viewDate, setViewDate] = useState('2026-06-25T14:30');
-  const [viewType, setViewType] = useState<'Zoom Live' | '現場睇樓' | '自選影片錄影'>('Zoom Live');
+  const [viewDate, setViewDate] = useState('2026-06-18T14:00');
+  const [viewType, setViewType] = useState<'現場睇樓' | '自選影片錄影'>('現場睇樓');
   const [assignedStaff, setAssignedStaff] = useState('B哥');
 
-  // Simulated live player state
-  const [playingViewingId, setPlayingViewingId] = useState<string | null>(null);
-  const [playerInteractions, setPlayerInteractions] = useState<string[]>([
-    'B哥: 各位，佐藤專員已經到達難波公寓現場，街區好安靜。',
-    '佐藤 Sato: 啱啱出地鐵口行咗3分鐘，好近！周圍配套成熟。',
-    '陳大文: 直播好清！想睇睇套房洗手間通風情況同露台景觀。'
-  ]);
-  const [newChatInput, setNewChatInput] = useState('');
-
-  const activeLiveViewing = viewings.find(v => v.id === playingViewingId);
+  // Calendar states
+  const [currentYear, setCurrentYear] = useState(2026);
+  const [currentMonth, setCurrentMonth] = useState(6); // 1-index (6 = June)
+  const [selectedDay, setSelectedDay] = useState<number>(18); // Default to June 18 where v1 resides
 
   const handleCreateViewing = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,12 +45,13 @@ export default function ViewingsView({
       return;
     }
 
+    const formattedDate = viewDate.replace('T', ' ');
     const newViewing: Viewing = {
       id: `v_${Date.now()}`,
       clientName: currentClient,
       propertyName: selectedPropName,
-      dateTime: viewDate.replace('T', ' '),
-      type: viewType,
+      dateTime: formattedDate,
+      type: viewType as any,
       status: '已預約',
       staff: assignedStaff
     };
@@ -70,24 +59,62 @@ export default function ViewingsView({
     onAddViewing(newViewing);
     setCurrentClient('');
     setShowAddForm(false);
-    alert(`【帶看日程已成功掛載】\n已成功為 [ ${currentClient} ] 預約帶看：\n屋苑：${selectedPropName}\n時間：${viewDate.replace('T', ' ')}\n帶看形式：[ ${viewType} ]\n已分派 [ ${assignedStaff} ] 為主理宅建專員。`);
+    
+    // Auto focus on the newly scheduled day in the calendar
+    try {
+      const parts = formattedDate.split(' ')[0].split('-');
+      const y = parseInt(parts[0]);
+      const m = parseInt(parts[1]);
+      const d = parseInt(parts[2]);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+        setCurrentYear(y);
+        setCurrentMonth(m);
+        setSelectedDay(d);
+      }
+    } catch (err) {
+      console.error("Error parsing date: ", err);
+    }
+
+    alert(`【帶看日程已成功掛載】\n已成功為 [ ${currentClient} ] 預約帶看：\n屋苑：${selectedPropName}\n時間：${formattedDate}\n帶看形式：[ ${viewType} ]\n已分派 [ ${assignedStaff} ] 為主理宅建專員。`);
   };
 
-  const handleAddChat = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newChatInput.trim()) {
-      setPlayerInteractions([...playerInteractions, `您 (B哥): ${newChatInput.trim()}`]);
-      setNewChatInput('');
+  // Calendar calculations
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  const firstDayOfWeek = new Date(currentYear, currentMonth - 1, 1).getDay(); // 0 = Sunday, 1 = Monday etc
 
-      // Auto reply from Satos-san after a brief delay
-      setTimeout(() => {
-        setPlayerInteractions(prev => [
-          ...prev, 
-          '佐藤 Sato: 收到！正推開防盜門，全原木松下地暖與防火建材都保養得好好。'
-        ]);
-      }, 1000);
+  const handlePrevMonth = () => {
+    if (currentMonth === 1) {
+      setCurrentMonth(12);
+      setCurrentYear(prev => prev - 1);
+    } else {
+      setCurrentMonth(prev => prev - 1);
     }
   };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 12) {
+      setCurrentMonth(1);
+      setCurrentYear(prev => prev + 1);
+    } else {
+      setCurrentMonth(prev => prev + 1);
+    }
+  };
+
+  // Extract date-specific viewings helper
+  const getViewingsForDay = (day: number) => {
+    const formattedPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return viewings.filter(v => v.dateTime.startsWith(formattedPrefix));
+  };
+
+  // Days list labels
+  const daysOfWeek = ['日', '一', '二', '三', '四', '五', '六'];
+
+  // Current month's scheduled viewings list
+  const currentMonthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  const monthViewings = viewings.filter(v => v.dateTime.startsWith(currentMonthPrefix));
+
+  // Chosen selected day viewings
+  const selectedDayViewings = getViewingsForDay(selectedDay);
 
   return (
     <div className="space-y-6 font-sans">
@@ -97,10 +124,10 @@ export default function ViewingsView({
         <div>
           <h2 className="text-sm font-bold text-zinc-900 tracking-wider uppercase flex items-center gap-2">
             <CalendarDays className="w-5 h-5 text-emerald-600" />
-            <span>日本大阪・聯動睇樓帶看日程表</span>
+            <span>日本大阪・實體/錄影帶看日程月曆表</span>
           </h2>
           <p className="text-xs text-zinc-500 mt-1">
-            安排與追蹤日本置業「現場視像現場(Zoom Live)直播帶看」與實體觀景行程，宅地建物取引士現場實況反饋。
+            安排與追蹤日本大阪置業「現場陪同參觀」與「海外專員高清實景錄影」行程，宅建物料與重要事項流程日程備查。
           </p>
         </div>
         <button
@@ -135,7 +162,7 @@ export default function ViewingsView({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase">挑選預約的大阪標的 *</label>
+            <label className="text-[10px] font-bold text-zinc-400 uppercase">挑選預約的大盤物業 *</label>
             <select
               value={selectedPropName}
               onChange={e => setSelectedPropName(e.target.value)}
@@ -164,11 +191,10 @@ export default function ViewingsView({
               <select
                 value={viewType}
                 onChange={e => setViewType(e.target.value as any)}
-                className="w-full text-xs border border-zinc-200 rounded-lg p-2 bg-white outline-none"
+                className="w-full text-xs border border-zinc-200 rounded-lg p-2 bg-white outline-none text-zinc-800 font-semibold"
               >
-                <option value="Zoom Live">大阪現場 Live 視訊直播 (最受歡迎)</option>
                 <option value="現場睇樓">前往大阪現地陪同參觀</option>
-                <option value="自選影片錄影">專員高清實景錄影</option>
+                <option value="自選影片錄影">海外專員高清實景錄影</option>
               </select>
             </div>
           </div>
@@ -177,7 +203,7 @@ export default function ViewingsView({
             <label className="text-[10px] font-bold text-zinc-400 uppercase">隨行日本宅建士 / 隨從專員</label>
             <input 
               type="text" 
-              placeholder="e.g.佐藤佐藤 Mr. Sato / B哥"
+              placeholder="e.g. 佐藤專員 Mr. Sato / B哥"
               value={assignedStaff}
               onChange={e => setAssignedStaff(e.target.value)}
               className="w-full text-xs border border-zinc-200 hover:border-zinc-300 rounded-lg p-2 bg-zinc-50/50 focus:border-emerald-500 focus:bg-white outline-none"
@@ -196,7 +222,7 @@ export default function ViewingsView({
               type="submit"
               className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold rounded-lg shadow-xs"
             >
-              核銷掛載
+              核銷排程日程
             </button>
           </div>
         </form>
@@ -204,100 +230,88 @@ export default function ViewingsView({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Column: List of Schedules */}
-        <div className="lg:col-span-6 bg-white border border-zinc-200 rounded-xl p-5 shadow-xs space-y-4">
-          <h3 className="text-xs font-bold text-zinc-850 uppercase tracking-widest border-b pb-2 flex items-center justify-between">
-            <span>當前帶看進程排程簿 ({viewings.length})</span>
-            <span className="text-[10px] bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded font-mono font-bold">LIVE-LINK</span>
-          </h3>
+        {/* Left Column: List of all Schedules */}
+        <div className="lg:col-span-5 bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b pb-2">
+            <h3 className="text-xs font-bold text-zinc-800 uppercase tracking-wider flex items-center gap-1.5">
+              <span>當前所有帶看進程排程簿 ({viewings.length})</span>
+            </h3>
+            <span className="text-[9.5px] bg-zinc-100 text-zinc-500 font-mono font-bold px-2 py-0.5 rounded">
+              B哥 CRM 聯動
+            </span>
+          </div>
 
-          <div className="space-y-3.5">
+          <div className="space-y-3 max-h-[580px] overflow-y-auto pr-1">
             {viewings.map(view => {
-              const isPlaying = view.id === playingViewingId;
-              const isLiveType = view.type === 'Zoom Live';
+              const viewOnCal = () => {
+                try {
+                  const datePart = view.dateTime.split(' ')[0];
+                  const y = parseInt(datePart.split('-')[0]);
+                  const m = parseInt(datePart.split('-')[1]);
+                  const d = parseInt(datePart.split('-')[2]);
+                  if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+                    setCurrentYear(y);
+                    setCurrentMonth(m);
+                    setSelectedDay(d);
+                  }
+                } catch(e) {}
+              };
 
               return (
                 <div 
                   key={view.id}
-                  className={`border rounded-xl p-4 transition ${
-                    isPlaying 
-                      ? 'border-emerald-500 bg-emerald-50/5 shadow-md' 
-                      : 'border-zinc-150 hover:border-zinc-200'
+                  onClick={viewOnCal}
+                  className={`border rounded-xl p-3.5 transition cursor-pointer hover:border-emerald-300 bg-white ${
+                    selectedDayViewings.some(sv => sv.id === view.id)
+                      ? 'ring-2 ring-emerald-500/20 border-emerald-500 bg-emerald-50/10'
+                      : 'border-zinc-150'
                   }`}
                 >
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="space-y-1">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="font-extrabold text-xs text-zinc-900">{view.clientName}</span>
-                        <span className="text-[10px] text-zinc-400 font-semibold">• 由 {view.staff} 帶看</span>
+                        <span className="font-extrabold text-xs text-zinc-900 truncate">
+                          {view.clientName}
+                        </span>
+                        <span className="text-[9.5px] text-zinc-400 font-semibold shrink-0">
+                          • 由 {view.staff} 帶看
+                        </span>
                       </div>
-                      <h4 className="text-xs font-bold text-emerald-800 leading-snug">{view.propertyName}</h4>
-                      <div className="flex flex-wrap gap-2 text-[10px] text-zinc-500 pt-1">
+                      <h4 className="text-[11.5px] font-bold text-emerald-800 leading-snug truncate">
+                        {view.propertyName}
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5 text-[9.5px] text-zinc-500 pt-1">
                         <span className="flex items-center gap-1 bg-zinc-50 px-2 py-0.5 rounded border border-zinc-100 font-medium">
-                          <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                          <Clock className="w-3 h-3 text-zinc-400" />
                           {view.dateTime}
                         </span>
                         <span className="flex items-center gap-1 bg-zinc-50 px-2 py-0.5 rounded border border-zinc-100 font-medium">
-                          <Video className="w-3.5 h-3.5 text-zinc-400" />
+                          <Compass className="w-3 h-3 text-zinc-400" />
                           {view.type}
                         </span>
                       </div>
                     </div>
 
-                    <div className="text-right space-y-2 select-none">
-                      <span className={`inline-block text-[9.5px] font-bold px-2 py-0.5 rounded leading-none ${
+                    <div className="text-right space-y-1.5 shrink-0">
+                      <span className={`inline-block text-[9px] font-extrabold px-1.5 py-0.5 rounded leading-none ${
                         view.status === '已完成' 
-                          ? 'bg-zinc-100 text-zinc-650 border border-zinc-200' 
-                          : view.status === '直播中' 
-                          ? 'bg-rose-500 text-white animate-pulse'
-                          : 'bg-emerald-500/15 text-emerald-700 border border-emerald-500/20'
+                          ? 'bg-zinc-100 text-zinc-500 border border-zinc-200' 
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                       }`}>
                         {view.status}
                       </span>
 
-                      {/* Control buttons */}
-                      <div className="pt-2 text-[10px] flex items-center justify-end gap-1.5 font-bold">
+                      <div className="pt-1.5">
                         {view.status === '已預約' && (
-                          <>
-                            {isLiveType && (
-                              <button
-                                onClick={() => {
-                                  onUpdateViewingStatus(view.id, '直播中');
-                                  setPlayingViewingId(view.id);
-                                }}
-                                className="bg-rose-550 hover:bg-rose-500 text-white px-2 py-1 rounded"
-                              >
-                                啟動大阪直播
-                              </button>
-                            )}
-                            <button
-                              onClick={() => onUpdateViewingStatus(view.id, '已完成')}
-                              className="bg-zinc-100 border text-zinc-700 hover:bg-zinc-200 px-2 py-1 rounded"
-                            >
-                              標記完成
-                            </button>
-                          </>
-                        )}
-                        
-                        {view.status === '直播中' && (
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               onUpdateViewingStatus(view.id, '已完成');
-                              setPlayingViewingId(null);
-                              alert('【視像帶看圓滿核銷】\n大阪直播帶看已順利結束。錄影壓縮檔已自動存入客戶在 CRM「重要事項告知書」之存檔中。');
+                              alert(`【帶看備案登記成功】\n「${view.clientName}」對「${view.propertyName}」的參觀已順利核備。`);
                             }}
-                            className="bg-emerald-500 text-zinc-950 hover:bg-emerald-450 px-2.5 py-1 rounded shadow-xs"
+                            className="bg-zinc-900 hover:bg-emerald-500 text-white hover:text-zinc-950 font-bold px-2 py-1 rounded text-[9.5px] shadow-xs cursor-pointer block w-full transition"
                           >
-                            完成存檔
-                          </button>
-                        )}
-
-                        {isLiveType && view.status !== '已完成' && !isPlaying && (
-                          <button
-                            onClick={() => setPlayingViewingId(view.id)}
-                            className="bg-zinc-900 text-white hover:bg-zinc-800 px-2.5 py-1 rounded"
-                          >
-                            開電視
+                            標記已完成
                           </button>
                         )}
                       </div>
@@ -307,105 +321,197 @@ export default function ViewingsView({
               );
             })}
           </div>
-
         </div>
 
-        {/* Right Column: Visual Live Broadcast Simulation */}
-        <div className="lg:col-span-6 space-y-6">
+        {/* Right Column: Visual Interactive Calendar */}
+        <div className="lg:col-span-7 space-y-6">
           
-          <div className="bg-zinc-950 border border-zinc-850 rounded-2xl overflow-hidden shadow-2xl p-5 text-zinc-200 space-y-4">
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-5">
             
-            <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+            {/* Calendar Control Bar */}
+            <div className="flex justify-between items-center bg-zinc-50/50 p-2.5 rounded-xl border border-zinc-150">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-200">
-                  {playingViewingId ? `OSAKA LIVE FEED: ${activeLiveViewing?.clientName}` : 'OSAKA CCTV / LIVE SIMULATION'}
+                <CalendarDays className="w-4.5 h-4.5 text-emerald-600" />
+                <span className="font-extrabold text-sm text-zinc-900 tracking-tight font-sans">
+                  {currentYear} 年 {currentMonth} 月
+                </span>
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded select-none">
+                  {monthViewings.length} 個本月排程
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-zinc-500">2026-06-16 CAMERA-02</span>
-            </div>
-
-            {/* Video Player Display */}
-            <div className="relative h-64 bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden flex items-center justify-center">
               
-              {playingViewingId ? (
-                <>
-                  <img 
-                    src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80" 
-                    alt="Osaka Street Live Feed" 
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover filter brightness-90 saturate-75 contrast-105"
-                  />
-                  
-                  {/* Telemetry graphic overlays */}
-                  <div className="absolute inset-0 bg-radial-gradient-to-t from-zinc-950/20 to-transparent pointer-events-none"></div>
-                  
-                  <div className="absolute top-4 left-4 bg-zinc-900/80 border border-zinc-700 py-1 px-2.5 rounded-lg text-[9px] font-mono text-emerald-400 space-y-0.5 uppercase tracking-wide">
-                    <div>GPS: 34.6691° N, 135.5030° E</div>
-                    <div>FPS: 60.0 • LATENCY: 28ms</div>
-                  </div>
+              <div className="flex items-center gap-1.5 select-none">
+                <button 
+                  type="button" 
+                  onClick={handlePrevMonth}
+                  className="p-1.5 rounded-lg border border-zinc-250 bg-white hover:bg-zinc-50 text-zinc-600 transition cursor-pointer"
+                  title="上一個月"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    const today = new Date();
+                    setCurrentYear(2026);
+                    setCurrentMonth(6);
+                    setSelectedDay(18);
+                  }}
+                  className="text-[10.5px] font-bold border border-zinc-250 bg-white hover:bg-zinc-50 px-2.5 py-1 rounded-lg text-zinc-700 cursor-pointer"
+                >
+                  回到 June 2026
+                </button>
+                <button 
+                  type="button" 
+                  onClick={handleNextMonth}
+                  className="p-1.5 rounded-lg border border-zinc-250 bg-white hover:bg-zinc-50 text-zinc-600 transition cursor-pointer"
+                  title="下一個月"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
 
-                  <div className="absolute top-4 right-4 bg-rose-500 text-white text-[9px] font-extrabold px-2 py-0.5 rounded tracking-widest uppercase flex items-center gap-1 font-mono">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
-                    <span>LIVE</span>
-                  </div>
-
-                  <div className="absolute bottom-4 left-4 right-4 bg-gradient-to-t from-zinc-950/90 to-transparent p-3 rounded-lg select-text">
-                    <div className="text-[10px] text-zinc-400 font-bold uppercase block tracking-wider">正在進行視像帶看</div>
-                    <div className="text-xs font-bold text-white truncate max-w-xs">{activeLiveViewing?.propertyName}</div>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center p-8 space-y-4 max-w-xs select-none">
-                  <Tv className="w-12 h-12 text-zinc-650 mx-auto" />
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-bold text-zinc-300">日本直播監視接收台已就緒</h4>
-                    <p className="text-[10px] text-zinc-500 leading-normal">
-                      選擇左側有 [視訊帶看] 狀態為「已預約」或「直播中」的行程，點選「啟動大阪直播」或「開電視」即可同步監視畫面。
-                    </p>
-                  </div>
+            {/* Calendar Weekday Names */}
+            <div className="grid grid-cols-7 gap-1 text-center font-bold text-[11px] text-zinc-400 select-none pb-1">
+              {daysOfWeek.map((dayLabel, i) => (
+                <div key={i} className={`py-1 ${i === 0 || i === 6 ? 'text-rose-400' : ''}`}>
+                  {dayLabel}
                 </div>
-              )}
+              ))}
+            </div>
+
+            {/* Calendar Grid Numbers */}
+            <div className="grid grid-cols-7 gap-2.5">
+              
+              {/* Empty placeholder boxes before first day */}
+              {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                <div key={`empty-${i}`} className="aspect-square bg-zinc-50/30 rounded-xl" />
+              ))}
+
+              {/* Day cells */}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const dayNum = i + 1;
+                const dateViewings = getViewingsForDay(dayNum);
+                const hasViewings = dateViewings.length > 0;
+                const isSelected = selectedDay === dayNum;
+
+                return (
+                  <button
+                    key={`day-${dayNum}`}
+                    type="button"
+                    onClick={() => setSelectedDay(dayNum)}
+                    className={`aspect-square relative flex flex-col items-center justify-between p-1.5 rounded-xl border focus:outline-none transition group cursor-pointer ${
+                      isSelected 
+                        ? 'bg-emerald-600 border-emerald-600 text-white font-extrabold shadow-md' 
+                        : hasViewings
+                        ? 'border-emerald-400 bg-emerald-50/40 text-emerald-950 font-bold hover:bg-emerald-50 hover:border-emerald-500'
+                        : 'border-zinc-150 hover:border-zinc-300 text-zinc-800'
+                    }`}
+                  >
+                    {/* Day number */}
+                    <span className="text-xs">{dayNum}</span>
+
+                    {/* Indicators of scheduling */}
+                    <div className="w-full flex justify-center gap-1 min-h-[4px]">
+                      {dateViewings.map((v, index) => (
+                        <span 
+                          key={v.id} 
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isSelected 
+                              ? 'bg-white' 
+                              : v.status === '已完成' 
+                              ? 'bg-zinc-400' 
+                              : 'bg-emerald-500'
+                          }`} 
+                        />
+                      ))}
+                    </div>
+
+                    {/* Hover Tooltip or floating viewings count */}
+                    {hasViewings && !isSelected && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white text-[8px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center border border-white">
+                        {dateViewings.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
 
             </div>
 
-            {/* Chat list channel */}
-            <div className="space-y-3 pt-2">
-              <h4 className="text-[10px] font-extrabold text-zinc-500 uppercase tracking-widest leading-none">
-                聯動視像語音即時反饋 (MOCK CHAT)
-              </h4>
-
-              <div className="bg-zinc-900/70 border border-zinc-850 rounded-lg p-3.5 max-h-36 overflow-y-auto space-y-2 text-[10.5px] font-sans custom-scrollbar select-text">
-                {playerInteractions.map((line, i) => {
-                  const isMine = line.startsWith('您');
-                  const isSato = line.startsWith('佐藤');
-                  return (
-                    <div key={i} className="leading-relaxed">
-                      <strong className={`font-bold ${isMine ? 'text-emerald-400' : isSato ? 'text-amber-400' : 'text-blue-300'}`}>
-                        {line.split(': ')[0]}:
-                      </strong>
-                      <span className="text-zinc-300"> {line.split(': ')[1]}</span>
-                    </div>
-                  );
-                })}
+            {/* Target Day Detailed Section */}
+            <div className="border-t border-zinc-100 pt-5 space-y-3.5">
+              <div className="flex justify-between items-center">
+                <h4 className="text-[11.5px] font-extrabold text-zinc-450 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded bg-emerald-500" />
+                  <span>【 {currentYear} 年 {currentMonth} 月 {selectedDay} 日 】 本日帶看詳情 </span>
+                </h4>
+                <span className="text-[10px] text-zinc-400">
+                  {selectedDayViewings.length} 個預約
+                </span>
               </div>
 
-              {playingViewingId && (
-                <form onSubmit={handleAddChat} className="flex gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="輸入對話給現場佐藤專員或給陳大文..."
-                    value={newChatInput}
-                    onChange={e => setNewChatInput(e.target.value)}
-                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-zinc-700"
-                  />
+              {selectedDayViewings.length === 0 ? (
+                <div className="text-center py-7 border border-dashed rounded-xl bg-zinc-50/50 text-xs text-zinc-400">
+                  本日暫時沒有安排實體睇樓或錄影日程安排。
                   <button 
-                    type="submit" 
-                    className="bg-zinc-800 hover:bg-zinc-750 text-white px-3 text-xs rounded-lg font-bold"
+                    onClick={() => {
+                      // Set default time to selected date
+                      const timeStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}T14:30`;
+                      setViewDate(timeStr);
+                      setShowAddForm(true);
+                    }}
+                    className="text-emerald-600 font-bold hover:underline ml-1 block mt-1"
                   >
-                    傳送
+                    + 點此為當天添加睇樓預約
                   </button>
-                </form>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedDayViewings.map((v) => (
+                    <div 
+                      key={v.id} 
+                      className="border border-zinc-200 rounded-xl p-4 bg-zinc-50/35 hover:bg-zinc-50/70 transition"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1.5">
+                          <span className="inline-block text-[9px] font-extrabold border border-emerald-500/20 bg-emerald-50 text-emerald-800 rounded px-1.5 py-0.5">
+                            {v.type} ({v.status})
+                          </span>
+                          <h5 className="font-extrabold text-xs text-zinc-900">{v.propertyName}</h5>
+                          <div className="text-[11.5px] text-zinc-650 space-y-0.5">
+                            <p className="flex items-center gap-1">
+                              <span className="text-zinc-400 font-medium">對接客戶：</span>
+                              <span className="font-extrabold text-zinc-800">{v.clientName}</span>
+                            </p>
+                            <p className="flex items-center gap-1">
+                              <span className="text-zinc-400 font-medium font-sans">隨行宅建：</span>
+                              <span className="font-semibold text-zinc-700">{v.staff}</span>
+                            </p>
+                            <p className="flex items-center gap-1">
+                              <span className="text-zinc-400 font-medium">預定時間：</span>
+                              <span className="font-bold text-emerald-800 font-mono text-[11px]">{v.dateTime}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        {v.status === '已預約' && (
+                          <button
+                            onClick={() => {
+                              onUpdateViewingStatus(v.id, '已完成');
+                              alert(`【帶看備案登記成功】\n「${v.clientName}」對「${v.propertyName}」的參觀已順利核備。`);
+                            }}
+                            className="bg-emerald-500 hover:bg-emerald-450 text-zinc-950 font-extrabold px-3 py-1.5 rounded-lg text-xs transition shadow-xs cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                            <span>登記完成</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 

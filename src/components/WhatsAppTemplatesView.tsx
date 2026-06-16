@@ -6,7 +6,8 @@ import {
   Trash2, 
   Copy, 
   MessageSquare,
-  X
+  X,
+  Pencil
 } from 'lucide-react';
 import { WhatsAppTemplate } from '../types';
 
@@ -18,6 +19,7 @@ interface WhatsAppTemplatesViewProps {
 export default function WhatsAppTemplatesView({ templates, onChangeTemplates }: WhatsAppTemplatesViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
 
   // New Template Inputs
   const [title, setTitle] = useState('');
@@ -38,22 +40,38 @@ export default function WhatsAppTemplatesView({ templates, onChangeTemplates }: 
       return;
     }
 
-    const newTemplate: WhatsAppTemplate = {
-      id: 'template_' + Date.now(),
-      title,
-      scenario,
-      iconType,
-      colorTheme,
-      content
-    };
-
-    onChangeTemplates([...templates, newTemplate]);
+    if (editingTemplateId) {
+      const updated = templates.map(t => t.id === editingTemplateId ? {
+        ...t,
+        title,
+        scenario,
+        iconType,
+        colorTheme,
+        content
+      } : t);
+      onChangeTemplates(updated);
+      setEditingTemplateId(null);
+      alert('WhatsApp 快速回覆範本已成功更新！');
+    } else {
+      const newTemplate: WhatsAppTemplate = {
+        id: 'template_' + Date.now(),
+        title,
+        scenario,
+        iconType,
+        colorTheme,
+        content
+      };
+      onChangeTemplates([...templates, newTemplate]);
+      alert('新 WhatsApp 快速回覆範本已建立成功，即時載入至工作台快捷連結！');
+    }
     
     // reset inputs
     setTitle('');
     setContent('');
+    setScenario('SCENARIO 1');
+    setIconType('campaign');
+    setColorTheme('green');
     setShowAddModal(false);
-    alert('新 WhatsApp 快速回覆範本已建立成功，即時載入至工作台快捷連結！');
   };
 
   const handleDeleteTemplate = (id: string) => {
@@ -90,7 +108,15 @@ export default function WhatsAppTemplatesView({ templates, onChangeTemplates }: 
           </div>
           <button 
             type="button"
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setEditingTemplateId(null);
+              setTitle('');
+              setScenario('SCENARIO 1');
+              setIconType('campaign');
+              setColorTheme('green');
+              setContent('');
+              setShowAddModal(true);
+            }}
             className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-zinc-950 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer h-8.5"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -144,13 +170,30 @@ export default function WhatsAppTemplatesView({ templates, onChangeTemplates }: 
                     </h3>
                   </div>
                   
-                  <button 
-                    onClick={() => handleDeleteTemplate(temp.id)}
-                    className="text-zinc-300 hover:text-rose-600 transition p-1 rounded opacity-0 group-hover:opacity-100 cursor-pointer"
-                    title="刪除自訂範本"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-155">
+                    <button 
+                      onClick={() => {
+                        setEditingTemplateId(temp.id);
+                        setTitle(temp.title);
+                        setScenario(temp.scenario);
+                        setIconType(temp.iconType);
+                        setColorTheme(temp.colorTheme);
+                        setContent(temp.content);
+                        setShowAddModal(true);
+                      }}
+                      className="text-zinc-400 hover:text-emerald-605 transition p-1 rounded cursor-pointer"
+                      title="編輯自訂範本"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteTemplate(temp.id)}
+                      className="text-zinc-300 hover:text-rose-600 transition p-1 rounded cursor-pointer"
+                      title="刪除自訂範本"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Content Box */}
@@ -198,7 +241,7 @@ export default function WhatsAppTemplatesView({ templates, onChangeTemplates }: 
             <div className="flex justify-between items-center border-b pb-2">
               <span className="font-bold text-zinc-800 text-xs uppercase flex items-center gap-1">
                 <MessageSquare className="w-4 h-4 text-emerald-600" />
-                <span>建立全新快捷發送範本</span>
+                <span>{editingTemplateId ? "編輯/更新快捷發送範本" : "建立全新快捷發送範本"}</span>
               </span>
               <button 
                 type="button" 
@@ -303,7 +346,7 @@ export default function WhatsAppTemplatesView({ templates, onChangeTemplates }: 
                 type="submit"
                 className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-lg text-xs font-bold cursor-pointer shadow-sm active:scale-95"
               >
-                儲存範本
+                {editingTemplateId ? "儲存更新" : "儲存範本"}
               </button>
             </div>
           </form>

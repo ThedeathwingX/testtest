@@ -58,18 +58,18 @@ export default function ClosingChecklistView({
   // We initialize the steps state for clients dynamically
   const getInitialStepsForClient = (clientId: string): StepItem[] => {
     const defaultSteps: StepItem[] = [
-      { id: 1, label: '1. 需求確認', desc: '篩選並釐清大阪市中心合規投資之期望意向與置業方向。', status: 'completed' },
-      { id: 2, label: '2. 推盤介接', desc: '依據預算，精選發送大阪區域首選優質盤源與樓書。', status: 'completed' },
-      { id: 3, label: '3. 視像/現場睇樓', desc: '聯動專員現場視像 live 直播帶看、解析大樓環境配套與完好度。', status: 'completed' },
-      { id: 4, label: '4. 議價及意向階段', desc: '協商置業條件，確認免責規則，簽收買方意向委託。', status: 'completed' },
-      { id: 5, label: '5. 買付申込書提出', desc: '由本司指派宅建士填寫正式買付意願書，提呈日本賣方進行留盤。', status: 'completed' },
+      { id: 1, label: '1. 需求確認', desc: '篩選並釐清大阪市中心合規投資之期望意向與置業方向。', status: 'completed', actionLabel: '確認買家需求對接' },
+      { id: 2, label: '2. 推盤介接', desc: '依據預算，精選發送大阪區域首選優質盤源與樓書。', status: 'completed', actionLabel: '確認已發送精選大阪盤源' },
+      { id: 3, label: '3. 視像/現場睇樓', desc: '聯動專員現場視像 live 直播帶看、解析大樓環境配套與完好度。', status: 'completed', actionLabel: '完成視像/現場帶看' },
+      { id: 4, label: '4. 議價及意向階段', desc: '協商置業條件，確認免責規則，簽收買方意向委託。', status: 'completed', actionLabel: '確認簽收買方置業意向' },
+      { id: 5, label: '5. 買付申込書提出', desc: '由本司指派宅建士填寫正式買付意願書，提呈日本賣方進行留盤。', status: 'completed', actionLabel: '正式向日本賣方提交意願留盤' },
       { id: 6, label: '6. 重要事項告知書收到', desc: '等待並收取日本賣方、司法書士機構寄達之重要事項正式合規調查文本。', status: 'active', actionLabel: 'B哥確認收到賣方寄送文件' },
-      { id: 7, label: '7. B哥親自安排宅建士講解', desc: '指派大阪持牌取引士，針對產權、修繕積立金規章和隱加利息進行講解。', status: 'blocked', actionLabel: '即刻預約宅建士進行講解' },
-      { id: 8, label: '8. 客戶確認明白條款', desc: '買方深度細閱並完全理會告知書每一章節，簽署確認反饋。', status: 'blocked', actionLabel: '點擊登記客戶明白並核銷' },
-      { id: 9, label: '9. 買賣契約用印簽署', desc: '雙方正式簽字並用印於重要事項說明書與買賣契約，歸檔備份。', status: 'future', actionLabel: '完成買賣合同用印登記' },
-      { id: 10, label: '10. 尾款及首期安全匯款', desc: '指導客戶依法規把置業尾款/首期匯入日本官方信託交易安全專戶。', status: 'future', actionLabel: '確認首期/尾款安全匯達' },
-      { id: 11, label: '11. 所有權移轉及交樓', desc: '司法書士移轉登記簿所有權，交付物業精裝鑰匙。', status: 'future', actionLabel: '登記物權證書移交及拿鑰' },
-      { id: 12, label: '12. 售後託管合同簽署', desc: '代理商正式介接日本合規牌照專屬託管物業管理，開始收租回報！', status: 'future', actionLabel: '建立物業託管運營建檔' }
+      { id: 7, label: '7. B哥親自安排宅建士講解', desc: '指派大阪持牌取引士，針對產權、修繕積立金規章和隱加利息進行講解。', status: 'blocked', actionLabel: '即刻預約安排宅建士講解' },
+      { id: 8, label: '8. 客戶確認明白條款', desc: '買方深度細閱並完全理會告知書每一章節，簽署確認反饋。', status: 'blocked', actionLabel: '登記買方完全明悉並核銷' },
+      { id: 9, label: '9. 買賣契約用印簽署', desc: '雙方正式簽字並用印於重要事項說明書與買賣契約，歸檔備份。', status: 'future', actionLabel: '完成雙方契約用印歸檔' },
+      { id: 10, label: '10. 尾款及首期安全匯款', desc: '指導客戶依法規把置業尾款/首期匯入日本官方信託交易安全專戶。', status: 'future', actionLabel: '核銷確認購地首期/尾款匯達' },
+      { id: 11, label: '11. 所有權移轉及交樓', desc: '司法書士移轉登記簿所有權，交付物業精裝鑰匙。', status: 'future', actionLabel: '確認移轉登記並拿取鑰匙' },
+      { id: 12, label: '12. 售後託管合同簽署', desc: '代理商正式介接日本合規牌照專屬託管物業管理，開始收租回報！', status: 'future', actionLabel: '完成售後牌照專屬託管委託' }
     ];
 
     if (clientId === 'c2') {
@@ -77,7 +77,7 @@ export default function ClosingChecklistView({
         if (s.id <= 3) return { ...s, status: 'completed' as const };
         if (s.id === 4) return { ...s, status: 'active' as const, actionLabel: '確認簽收買方意向書' };
         if (s.id === 5) return { ...s, status: 'blocked' as const };
-        if (s.id > 5) return { ...s, status: 'future' as const, actionLabel: undefined };
+        if (s.id > 5) return { ...s, status: 'future' as const };
         return s;
       });
     }
@@ -87,7 +87,7 @@ export default function ClosingChecklistView({
         if (s.id <= 2) return { ...s, status: 'completed' as const };
         if (s.id === 3) return { ...s, status: 'active' as const, actionLabel: '完成現場/Zoom直播帶看' };
         if (s.id === 4) return { ...s, status: 'blocked' as const };
-        if (s.id > 4) return { ...s, status: 'future' as const, actionLabel: undefined };
+        if (s.id > 4) return { ...s, status: 'future' as const };
         return s;
       });
     }
@@ -97,7 +97,7 @@ export default function ClosingChecklistView({
         if (s.id <= 4) return { ...s, status: 'completed' as const };
         if (s.id === 5) return { ...s, status: 'active' as const, actionLabel: '向日本賣家提出買付申込書' };
         if (s.id === 6) return { ...s, status: 'blocked' as const };
-        if (s.id > 6) return { ...s, status: 'future' as const, actionLabel: undefined };
+        if (s.id > 6) return { ...s, status: 'future' as const };
         return s;
       });
     }
@@ -105,11 +105,20 @@ export default function ClosingChecklistView({
     return defaultSteps;
   };
 
-  // Maintain per-client step records in component state
-  const [clientSteps, setClientSteps] = useState<Record<string, StepItem[]>>({});
+  // Maintain per-client step records in component state with local storage backing
+  const [clientSteps, setClientSteps] = useState<Record<string, StepItem[]>>(() => {
+    try {
+      const saved = localStorage.getItem('OSAKA_CRM_CLIENT_STEPS_v1');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {}
+    return {};
+  });
 
   // Sub-tab selection state inside checklist
   const [activeSubTab, setActiveSubTab] = useState<'tracker' | 'archive'>('tracker');
+  const [closingSearchText, setClosingSearchText] = useState('');
 
   // Manual entry modal fields
   const [showManualModal, setShowManualModal] = useState(false);
@@ -128,13 +137,26 @@ export default function ClosingChecklistView({
   const activeClientId = selectedClientId || (clients[0] ? clients[0].id : '');
   const activeClient = clients.find(c => c.id === activeClientId) || clients[0];
 
+  const filteredClosingClients = clients.filter(c => {
+    const q = closingSearchText.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.engName && c.engName.toLowerCase().includes(q)) ||
+      (c.dealStatus && c.dealStatus.toLowerCase().includes(q)) ||
+      c.budget.toLowerCase().includes(q) ||
+      c.vipTag.toLowerCase().includes(q)
+    );
+  });
+
   const currentSteps = clientSteps[activeClientId] || getInitialStepsForClient(activeClientId);
 
   const updateStepsForActiveClient = (updatedSteps: StepItem[]) => {
-    setClientSteps({
+    const nextSteps = {
       ...clientSteps,
       [activeClientId]: updatedSteps
-    });
+    };
+    setClientSteps(nextSteps);
+    localStorage.setItem('OSAKA_CRM_CLIENT_STEPS_v1', JSON.stringify(nextSteps));
   };
 
   // Is Step 7 (B哥安排宅建士講解) completed?
@@ -301,9 +323,106 @@ export default function ClosingChecklistView({
       {activeSubTab === 'tracker' ? (
         // ----------------- SUB-TAB: ACTIVE CLIENT 12-STEP TRACKER -----------------
         activeClient ? (
-          <>
-            {/* Client Picker Panel */}
-            <div className="bg-white border p-4.5 rounded-xl shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            {/* Left Sidebar: Client List inside Closing Checklist */}
+            <div className="lg:col-span-4 bg-white border border-zinc-200 rounded-2xl p-5 space-y-4 shadow-sm self-stretch lg:self-auto">
+              <div className="space-y-1 pb-2 border-b border-zinc-150">
+                <div className="text-[10px] text-emerald-700 font-extrabold tracking-widest uppercase mb-1">
+                  大阪代理實時跟進
+                </div>
+                <h3 className="text-xs font-black text-zinc-900 uppercase tracking-widest flex items-center gap-1.5 font-sans">
+                  <UserCheck2 className="w-4 h-4 text-emerald-600 animate-pulse" />
+                  <span>成交案買家客戶列表</span>
+                </h3>
+                <p className="text-[10px] text-zinc-400 font-medium font-sans">
+                  點擊快速切換並追蹤個別客人的 12 步開單成交通路
+                </p>
+              </div>
+
+              {/* Search clients inside Closing Checklist */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-zinc-400" />
+                <input
+                  type="text"
+                  placeholder="搜尋買家、預算、成交狀態..."
+                  value={closingSearchText}
+                  onChange={(e) => setClosingSearchText(e.target.value)}
+                  className="w-full text-xs bg-zinc-50 border border-zinc-200 rounded-lg pl-8.5 pr-2.5 py-1.5 outline-none focus:bg-white focus:border-emerald-500 font-sans"
+                />
+              </div>
+
+              {/* Scrollable list card items */}
+              <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
+                {filteredClosingClients.map((c) => {
+                  const isActive = c.id === activeClientId;
+                  const cSteps = clientSteps[c.id] || getInitialStepsForClient(c.id);
+                  const completedCount = cSteps.filter(s => s.status === 'completed').length;
+                  const percentage = Math.round((completedCount / 12) * 100);
+
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => onSelectClient(c.id)}
+                      className={`p-3.5 rounded-xl border transition duration-150 cursor-pointer flex gap-3 relative ${
+                        isActive 
+                          ? 'bg-emerald-50/75 border-emerald-500 shadow-xs' 
+                          : 'bg-white border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50/50'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex justify-between items-start">
+                          <h4 className="text-xs font-bold text-zinc-900 truncate">
+                            {c.name} {c.engName && <span className="text-zinc-400 font-normal">({c.engName})</span>}
+                          </h4>
+                          <span className={`text-[8px] font-bold px-1 rounded uppercase shrink-0 ${
+                            c.heatTag === 'A級熱度' 
+                              ? 'bg-rose-100 text-rose-800' 
+                              : 'bg-zinc-100 text-zinc-500'
+                          }`}>
+                            {c.heatTag}
+                          </span>
+                        </div>
+
+                        {/* Progress meter */}
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between text-[9px] font-mono text-zinc-400 leading-none">
+                            <span>已履約: {completedCount}/12 步</span>
+                            <span className="font-extrabold text-emerald-700">{percentage}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Footer details: Deal Status and Budget */}
+                        <div className="flex justify-between items-center text-[9.5px] pt-1.5 border-t border-dotted border-zinc-150 gap-1 leading-none">
+                          <span className="text-emerald-750 font-black bg-emerald-50 border border-emerald-150 px-1.5 py-0.5 rounded truncate max-w-[90px]" title={c.dealStatus || '意向排查中'}>
+                            📍 {c.dealStatus || '意向排查中'}
+                          </span>
+                          <strong className="text-emerald-700 font-mono shrink-0">{c.budget.split(' ')[0]} {c.budget.split(' ')[1] || ''}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {filteredClosingClients.length === 0 && (
+                  <div className="text-center py-10 text-zinc-400 text-xs border border-dashed rounded-xl">
+                    查無匹配買家資料
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column: Transaction Checklist & Details */}
+            <div className="lg:col-span-8 space-y-6">
+
+              {/* Client Picker Panel */}
+              <div className="bg-white border p-4.5 rounded-xl shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <span className="text-xs font-bold text-zinc-500 shrink-0 select-none">
                   切換追蹤買家個案：
@@ -323,14 +442,29 @@ export default function ClosingChecklistView({
                 </select>
               </div>
 
-              <div className="text-[11px] text-zinc-500 font-semibold select-none flex items-center gap-1">
+              <div className="text-[11px] text-zinc-500 font-semibold select-none flex items-center gap-1.5 flex-wrap">
                 <span>當前個案：</span>
-                <strong className="text-zinc-800 font-extrabold">{activeClient.name}</strong>
-                <span className="text-zinc-300">|</span>
+                <strong className="text-zinc-850 font-extrabold">{activeClient.name}</strong>
+                <span className="text-zinc-300 font-normal">|</span>
                 <span>進度完成率：</span>
-                <span className="font-mono text-emerald-650 font-bold">
+                <span className="font-mono text-emerald-655 font-bold">
                   {Math.round((currentSteps.filter(s => s.status === 'completed').length / 12) * 100)}%
                 </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const resetSteps = getInitialStepsForClient(activeClientId).map((s, idx) => ({
+                      ...s,
+                      status: idx === 0 ? 'active' as const : (idx <= 7 ? 'blocked' as const : 'future' as const)
+                    }));
+                    updateStepsForActiveClient(resetSteps);
+                    alert(`【成交流程已重置】\n已成功將對象【${activeClient.name}】的12部曲成交流程重播！\n當前狀態：由「第 1 步：需求確認」正式起跑跟進！`);
+                  }}
+                  className="bg-rose-50 hover:bg-rose-150 border border-rose-200 text-rose-700 hover:text-rose-800 font-extrabold px-2 py-0.5 rounded-md text-[10px] transition cursor-pointer ml-2"
+                  title="重設此客戶進度落點至第一階段，完整覆核12部曲交易流程"
+                >
+                  重置回第 1 步
+                </button>
               </div>
             </div>
 
@@ -507,6 +641,32 @@ export default function ClosingChecklistView({
                           </button>
                         )}
 
+                        {/* Force manual calibration button for easy playability */}
+                        {!isActive && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = currentSteps.map(s => {
+                                if (s.id < step.id) {
+                                  return { ...s, status: 'completed' as const };
+                                } else if (s.id === step.id) {
+                                  return { ...s, status: 'active' as const };
+                                } else if (s.id === step.id + 1) {
+                                  return { ...s, status: 'blocked' as const };
+                                } else {
+                                  return { ...s, status: s.id <= 8 ? 'blocked' as const : 'future' as const };
+                                }
+                              });
+                              updateStepsForActiveClient(updated);
+                              alert(`【手動校準進度】\n已成功將對象【${activeClient.name}】的當前主線跟進度，標定位在：【第 ${step.id} 步 • ${step.label}】！`);
+                            }}
+                            className="bg-zinc-100 hover:bg-zinc-200 text-zinc-600 hover:text-zinc-805 border border-zinc-200 text-[10px] font-black px-2.5 py-1.5 rounded-lg transition shrink-0 cursor-pointer whitespace-nowrap"
+                            title="手動將進度校準定位至此步驟"
+                          >
+                            定位至此
+                          </button>
+                        )}
+
                         {/* Blocked message tag */}
                         {isBlocked && (
                           <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-100 px-2.5 py-1 rounded flex items-center gap-1 uppercase tracking-wide leading-none whitespace-nowrap shrink-0">
@@ -521,7 +681,8 @@ export default function ClosingChecklistView({
                 })}
               </div>
             </div>
-          </>
+          </div>
+          </div>
         ) : (
           <div className="bg-white border rounded-xl p-12 text-center text-zinc-400">
             <AlertOctagon className="w-12 h-12 mx-auto text-zinc-300 mb-2" />

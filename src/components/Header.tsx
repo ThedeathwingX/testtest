@@ -19,7 +19,7 @@ export default function Header({ currentView, searchQuery, onSearchChange }: Hea
       case 'clients':
         return [base, '客戶資料庫', '陳大文 (Mr. Chan)'];
       case 'kanban':
-        return [base, 'B哥個人跟進管線'];
+        return [base, '工作跟進管線'];
       case 'pavel_checklist':
         return [base, '重要事項告知書', '合規進度管理'];
       case 'whatsapp_sync':
@@ -28,6 +28,8 @@ export default function Header({ currentView, searchQuery, onSearchChange }: Hea
         return [base, 'WhatsApp 模板庫', '快速對話指令'];
       case 'checklist':
         return [base, '成交流程', '#TXN-8842 案件進度'];
+      case 'backup':
+        return [base, '數據備份與安全中心', '安全備存配置'];
       default:
         return [base];
     }

@@ -25,6 +25,7 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
     propertyType: '一戶建, 全棟收租',
     purpose: '投資收租 (要避伏)',
     fundingPower: 'Full Pay 現金買家',
+    dealStatus: '重要事項講解',
     avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBPGtHzzbj9wSZ6w1eDCJRKl6eN8VjtBf54yhHpBEzrZhHTz12FZqsq7tMyBgKBRoJOtjQVLJxnF3xDdc_49XXCU3go_TI7JFnZurEU42oNtd_8FDVeo4ulaRAbM0VXy5N69TxjSz3l1sJe5kh8opNtQ6Qjlpuqhk4RXga6u7g89aD9J46Lf25D8uwew0XF_lwAWBqpKlNt-BKpT4qIQDRTEmDJ5lAgHfAtC3sFZW4bArnZQjradg8JrNNFaS6QSfnU9lNCZIQTR2c',
     followUpNotes: [
       {
@@ -58,6 +59,7 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
     propertyType: '公寓套房 (近地鐵)',
     purpose: '民宿運營/長租',
     fundingPower: '自備五成首期, 辦理日本住宅貸款',
+    dealStatus: '視像睇樓中',
     avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
     followUpNotes: [
       {
@@ -83,6 +85,7 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
     propertyType: '商用店鋪, 全棟收租',
     purpose: '高額資產配置',
     fundingPower: '香港公司營運資金匯款',
+    dealStatus: '託管及收租',
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
     followUpNotes: [
       {
@@ -108,6 +111,7 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
     propertyType: '中古公寓套房',
     purpose: '渡假自用+閒置出租',
     fundingPower: '全款現金買家',
+    dealStatus: '雙方簽約中',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
     followUpNotes: [
       {
@@ -133,6 +137,7 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
     propertyType: '全新一戶建',
     purpose: '家族日本移居/留學',
     fundingPower: '現金支票與家族信託',
+    dealStatus: '意向排查中',
     avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150',
     followUpNotes: [
       {
@@ -168,7 +173,7 @@ export const INITIAL_KANBAN_CARDS: KanbanCard[] = [
     budget: 'JPY 50M',
     preferredArea: '未定 (心齋橋周邊優先)',
     source: 'WhatsApp 查詢',
-    stageId: 'replied',
+    stageId: 'viewed',
     nextStep: '發送初步精選盤 List',
     label: '等回覆'
   }

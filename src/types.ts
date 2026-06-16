@@ -8,7 +8,8 @@ export type ActiveView =
   | 'checklist'
   | 'properties'
   | 'viewings'
-  | 'reports';
+  | 'reports'
+  | 'backup';
 
 export interface Property {
   id: string;
@@ -60,6 +61,7 @@ export interface ClientProfile {
   fundingPower: string;
   avatarUrl?: string;
   followUpNotes: FollowUpNote[];
+  dealStatus?: string; // e.g. 跟進中, 已安排講解, 已成交, 等
 }
 
 export interface KanbanStage {
